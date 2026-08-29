@@ -2,7 +2,17 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { DailyRunStore, authorized, decodeTrigger, localDate, nextLink, readFizzy, type FizzyConfig } from '../.amp/plugins/daily-focus'
+import {
+	DailyRunStore,
+	authorized,
+	createFizzyCard,
+	createFizzyComment,
+	decodeTrigger,
+	localDate,
+	nextLink,
+	readFizzy,
+	type FizzyConfig,
+} from '../.amp/plugins/daily-focus'
 
 describe('daily focus helpers', () => {
 	test('uses the configured timezone for the run date', () => {
@@ -94,5 +104,75 @@ describe('daily focus helpers', () => {
 
 		expect(readFizzy(config, 'https://example.com/cards')).rejects.toThrow('fizzy_path_must_be_relative')
 		expect(readFizzy(config, '//example.com/cards')).rejects.toThrow('fizzy_path_must_be_relative')
+	})
+
+	test('creates a Fizzy card on the selected board', async () => {
+		const originalFetch = globalThis.fetch
+		const requests: Array<{ url: string; init?: RequestInit }> = []
+		globalThis.fetch = (async (input, init) => {
+			requests.push({ url: input.toString(), init })
+			return Response.json({ id: 'card-id', number: 42, title: 'Ship it' }, { status: 201 })
+		}) as typeof fetch
+		const config = {
+			fizzyBaseUrl: new URL('https://app.fizzy.do'),
+			fizzyToken: 'write-token',
+		} satisfies FizzyConfig
+
+		try {
+			expect(JSON.parse(await createFizzyCard(config, 'my-account', 'board/id', 'Ship it', 'Release today')))
+				.toEqual({ id: 'card-id', number: 42, title: 'Ship it' })
+			expect(requests[0].url).toBe('https://app.fizzy.do/my-account/boards/board%2Fid/cards')
+			expect(requests[0].init).toMatchObject({
+				method: 'POST',
+				headers: {
+					Accept: 'application/json',
+					Authorization: 'Bearer write-token',
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ card: { title: 'Ship it', description: 'Release today' } }),
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+	})
+
+	test('creates a Fizzy comment using the card number', async () => {
+		const originalFetch = globalThis.fetch
+		const requests: Array<{ url: string; init?: RequestInit }> = []
+		globalThis.fetch = (async (input, init) => {
+			requests.push({ url: input.toString(), init })
+			return Response.json({ id: 'comment-id', body: { plain_text: 'Done' } }, { status: 201 })
+		}) as typeof fetch
+		const config = {
+			fizzyBaseUrl: new URL('https://app.fizzy.do'),
+			fizzyToken: 'write-token',
+		} satisfies FizzyConfig
+
+		try {
+			expect(JSON.parse(await createFizzyComment(config, 'my-account', 42, 'Done')))
+				.toEqual({ id: 'comment-id', body: { plain_text: 'Done' } })
+			expect(requests[0].url).toBe('https://app.fizzy.do/my-account/cards/42/comments')
+			expect(requests[0].init).toMatchObject({
+				method: 'POST',
+				body: JSON.stringify({ comment: { body: 'Done' } }),
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+	})
+
+	test('reports Fizzy write failures without exposing the response body', async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async (_input, _init) => Response.json({ error: 'sensitive detail' }, { status: 401 })) as typeof fetch
+		const config = {
+			fizzyBaseUrl: new URL('https://app.fizzy.do'),
+			fizzyToken: 'read-only-token',
+		} satisfies FizzyConfig
+
+		try {
+			expect(createFizzyComment(config, 'my-account', 42, 'Done')).rejects.toThrow('fizzy_http_401')
+		} finally {
+			globalThis.fetch = originalFetch
+		}
 	})
 })
