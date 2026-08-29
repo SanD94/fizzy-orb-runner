@@ -452,6 +452,18 @@ export default async function dailyFocus(amp: PluginAPI) {
 
 				if (!run.threadId || !run.threadUrl) throw new Error('daily_state_incomplete')
 				try {
+					const thread = amp.threads.get(run.threadId as `T-${string}`)
+					if ((await thread.messages({ from: 'start', limit: 1 })).length === 0) {
+						await thread.appendUserMessage({
+							type: 'user-message',
+							content: `Daily focus — ${date}\n\nWelcome me briefly, then wait for my request. Do not inspect Fizzy or take any action yet.`,
+						})
+					}
+				} catch {
+					store.recordError(run.runKey, 'thread_initialization_failed')
+					throw new Error('thread_initialization_failed')
+				}
+				try {
 					const messageId = await sendTelegram(config, date, run.threadUrl, ctx.signal)
 					run = store.markNotified(run.runKey, messageId)
 					ctx.logger.log('Daily focus complete', event.id, run.localDate, run.threadId, messageId)

@@ -42,14 +42,14 @@ Run **Daily focus** from the Actions tab for the initial test. Thereafter it run
 
 1. the sleeping controller orb wakes;
 2. a fresh private orb thread appears with `fizzy_read`, `fizzy_create_card`, and `fizzy_create_comment` tools;
-3. the thread is initially empty and waits for the user; after the user asks what needs doing, Fizzy context and pagination can be read dynamically without exposing the token;
+3. the thread posts a brief welcome without reading Fizzy, then waits for the user; after the user asks what needs doing, Fizzy context and pagination can be read dynamically without exposing the token;
 4. when explicitly asked, the thread can create a published card on a selected board or add a comment to a selected card;
 5. Telegram receives one message containing that exact thread URL;
 6. the controller returns to idle while the new thread remains usable.
 
 The plugin stores its date claim and notification status in `.amp/state/daily-focus.sqlite` in the controller orb workspace. A unique timezone/date key prevents duplicate workflows or webhook redelivery from creating another daily thread. The thread ID and URL are persisted before Telegram is called; if Telegram fails, webhook retry reuses that thread. This state directory is intentionally ignored by Git.
 
-The current stable Plugin API cannot set a spawned thread's title or labels. Its `daily focus` mode label and the dated Telegram message identify the thread without sending an artificial first prompt that would start the agent before the user asks a question.
+The current stable Plugin API cannot set a spawned thread's title or labels, and an entirely empty spawned thread is archived automatically. The controller therefore seeds a dated prompt that asks for only a brief welcome and explicitly prohibits reading Fizzy or taking action before the user asks. Its `daily focus` mode label and the dated Telegram message also identify the thread.
 
 ## Local checks
 
