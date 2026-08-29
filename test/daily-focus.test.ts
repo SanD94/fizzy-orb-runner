@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { authorized, listFizzyCards, localDate, nextLink, type FizzyConfig } from '../.amp/plugins/daily-focus'
+import { authorized, localDate, nextLink, readFizzy, type FizzyConfig } from '../.amp/plugins/daily-focus'
 
 describe('daily focus helpers', () => {
 	test('uses the configured timezone for the run date', () => {
@@ -18,36 +18,30 @@ describe('daily focus helpers', () => {
 		expect(nextLink(null)).toBeNull()
 	})
 
-	test('lists Fizzy cards read-only and follows at most one next link', async () => {
+	test('reads Fizzy dynamically and exposes same-origin pagination', async () => {
 		const originalFetch = globalThis.fetch
 		const requests: Array<{ url: string; init?: RequestInit }> = []
 		globalThis.fetch = (async (input, init) => {
 			requests.push({ url: input.toString(), init })
-			if (requests.length === 1) {
-				return Response.json(
-					[{ id: 'newer', number: 2, title: '  Newer\ncard ', created_at: '2026-02-01T00:00:00Z' }],
-					{ headers: { Link: '<https://app.fizzy.do/acct/cards?page=2>; rel="next"' } },
-				)
-			}
-			return Response.json([{ id: 'older', number: 1, title: 'Older card', created_at: '2026-01-01T00:00:00Z' }])
+			return Response.json(
+				[{ id: 'card-1', number: 1, title: 'Current card' }],
+				{ headers: { Link: '<https://app.fizzy.do/acct/cards?page=2>; rel="next"' } },
+			)
 		}) as typeof fetch
 
 		const config = {
 			fizzyBaseUrl: new URL('https://app.fizzy.do'),
-			fizzyAccount: 'acct',
-			fizzyColumnIds: ['ready'],
 			fizzyToken: 'not-logged',
-			maxCards: 10,
 		} satisfies FizzyConfig
 
 		try {
-			const cards = await listFizzyCards(config)
-			expect(cards.map(({ id, title }) => ({ id, title }))).toEqual([
-				{ id: 'older', title: 'Older card' },
-				{ id: 'newer', title: 'Newer card' },
-			])
-			expect(requests).toHaveLength(2)
-			expect(requests[0].url).toContain('column_ids%5B%5D=ready')
+			const result = JSON.parse(await readFizzy(config, '/acct/cards?column_ids[]=ready'))
+			expect(result).toEqual({
+				data: [{ id: 'card-1', number: 1, title: 'Current card' }],
+				next_path: '/acct/cards?page=2',
+			})
+			expect(requests).toHaveLength(1)
+			expect(requests[0].url).toBe('https://app.fizzy.do/acct/cards?column_ids[]=ready')
 			expect(requests[0].init?.method).toBeUndefined()
 			expect(requests[0].init?.headers).toEqual({ Accept: 'application/json', Authorization: 'Bearer not-logged' })
 		} finally {
@@ -55,30 +49,13 @@ describe('daily focus helpers', () => {
 		}
 	})
 
-	test('discovers the Fizzy account when none is configured', async () => {
-		const originalFetch = globalThis.fetch
-		const urls: string[] = []
-		globalThis.fetch = (async (input) => {
-			urls.push(input.toString())
-			if (urls.length === 1) return Response.json({ accounts: [{ slug: '/account-123' }] })
-			return Response.json([])
-		}) as typeof fetch
+	test('rejects absolute and cross-origin Fizzy paths', async () => {
+		const config = {
+			fizzyBaseUrl: new URL('https://app.fizzy.do'),
+			fizzyToken: 'not-logged',
+		} satisfies FizzyConfig
 
-		try {
-			const cards = await listFizzyCards({
-				fizzyBaseUrl: new URL('https://app.fizzy.do'),
-				fizzyAccount: '',
-				fizzyColumnIds: [],
-				fizzyToken: 'not-logged',
-				maxCards: 10,
-			} satisfies FizzyConfig)
-			expect(cards).toEqual([])
-			expect(urls).toEqual([
-				'https://app.fizzy.do/my/identity',
-				'https://app.fizzy.do/account-123/cards',
-			])
-		} finally {
-			globalThis.fetch = originalFetch
-		}
+		expect(readFizzy(config, 'https://example.com/cards')).rejects.toThrow('fizzy_path_must_be_relative')
+		expect(readFizzy(config, '//example.com/cards')).rejects.toThrow('fizzy_path_must_be_relative')
 	})
 })
