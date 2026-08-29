@@ -1,3 +1,4 @@
+// @amp-agent-mode {"key":"daily-focus","label":"daily focus"}
 import { createHash, timingSafeEqual } from 'node:crypto'
 import type { BuiltinAgentMode, PluginAPI, WebhookEvent } from '@ampcode/plugin'
 
@@ -161,6 +162,12 @@ export default async function dailyFocus(amp: PluginAPI) {
 	const dailyAgent = amp.createAgent({
 		extends: config.mode,
 		tools: { add: ['fizzy_read'] },
+		display: { label: 'daily focus' },
+	})
+	amp.registerAgentMode({
+		key: 'daily-focus',
+		description: 'Daily project conversation with dynamic, read-only Fizzy context.',
+		agent: dailyAgent.definition,
 	})
 
 	const registration = await amp.createWebhook({
