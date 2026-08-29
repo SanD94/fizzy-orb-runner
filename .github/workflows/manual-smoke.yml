@@ -1,0 +1,33 @@
+name: Daily focus smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the Amp controller
+        env:
+          AMP_WEBHOOK_URL: ${{ secrets.AMP_WEBHOOK_URL }}
+          DAILY_TRIGGER_SECRET: ${{ secrets.DAILY_TRIGGER_SECRET }}
+        run: |
+          test -n "$AMP_WEBHOOK_URL"
+          test -n "$DAILY_TRIGGER_SECRET"
+
+          payload="$(jq -cn \
+            --arg triggered_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            '{triggered_at: $triggered_at, repository: $repository, run_id: $run_id}')"
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $DAILY_TRIGGER_SECRET" \
+            --header "Content-Type: application/json" \
+            --header "Idempotency-Key: phase-0-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --data "$payload" \
+            "$AMP_WEBHOOK_URL"

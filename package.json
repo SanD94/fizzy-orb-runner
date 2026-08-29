@@ -1,0 +1,13 @@
+{
+  "name": "fizzy-orb-runner",
+  "private": true,
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@ampcode/plugin": "latest",
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}
