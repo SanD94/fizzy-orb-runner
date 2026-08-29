@@ -1,6 +1,9 @@
-name: Daily focus smoke test
+name: Daily focus
 
 on:
+  schedule:
+    # GitHub cron is UTC. DAILY_TIMEZONE in Amp determines the daily run key.
+    - cron: '0 9 * * *'
   workflow_dispatch:
 
 permissions:
@@ -28,6 +31,6 @@ jobs:
             --request POST \
             --header "Authorization: Bearer $DAILY_TRIGGER_SECRET" \
             --header "Content-Type: application/json" \
-            --header "Idempotency-Key: phase-0-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --header "Idempotency-Key: daily-focus-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             --data "$payload" \
             "$AMP_WEBHOOK_URL"

@@ -1,12 +1,12 @@
 # Fizzy Orb Runner
 
-Phase 0 validates the thin path from a manual GitHub Actions run to a durable Amp webhook, a fresh orb thread, and one outbound Telegram notification. The fresh thread receives a GET-only Fizzy tool so it can read current project context on demand.
+Phase 1 creates one fresh Amp thread each morning through a scheduled GitHub Actions wake-up and sends its link to Telegram. The fresh thread loads a GET-only Fizzy tool but does not inspect Fizzy until the user asks what needs to be done.
 
-## Decisions for the smoke path
+## Decisions
 
-| Decision | Phase 0 choice |
+| Decision | Phase 1 choice |
 | --- | --- |
-| Scheduler | Manual `workflow_dispatch` only in Phase 0; Phase 1 cron choice is `0 9 * * *` |
+| Scheduler | GitHub Actions at `0 9 * * *` (UTC), plus manual `workflow_dispatch` recovery |
 | Daily timezone/time | `UTC` at 09:00 by default; timezone remains configurable with `DAILY_TIMEZONE` |
 | Thread | `medium` mode, private visibility, orb executor |
 | Fizzy access | Dynamic in the daily thread through `fizzy_read`; read-only personal token and GET requests only |
@@ -31,22 +31,24 @@ Phase 0 validates the thin path from a manual GitHub Actions run to a durable Am
 3. Restart the orb processes after saving the values. Amp loads [the project plugin](.amp/plugins/daily-focus.ts), registers the durable endpoint, and logs only `Daily focus webhook registered`.
 4. In the controller thread, run the command **Daily focus: copy webhook URL**. Copy the value from the dialog; it is not written to the thread or plugin logs.
 
-## GitHub setup and smoke test
+## GitHub setup and daily run
 
 In the repository's **Actions secrets**, add:
 
 - `AMP_WEBHOOK_URL`: the private URL copied from the Amp command;
 - `DAILY_TRIGGER_SECRET`: the same random value configured in the Amp project.
 
-Run **Daily focus smoke test** from the Actions tab. A successful run exits immediately after Amp accepts the event. Confirm:
+Run **Daily focus** from the Actions tab for the initial test. Thereafter it runs at 09:00 UTC. A successful workflow exits immediately after Amp accepts the event. Confirm:
 
 1. the sleeping controller orb wakes;
 2. a fresh private orb thread appears with the `fizzy_read` tool;
-3. in that thread, Fizzy accounts, boards, columns, cards, and pagination can be read dynamically without exposing the token;
+3. the thread is initially empty and waits for the user; after the user asks what needs doing, Fizzy context and pagination can be read dynamically without exposing the token;
 4. Telegram receives one message containing that exact thread URL;
 5. the controller returns to idle while the new thread remains usable.
 
-The webhook is at-least-once. Phase 0 intentionally does not claim a local date or persist notification status; do not use it as a schedule until Phase 1 adds that state. A Telegram failure after thread creation can therefore produce another test thread if Amp retries the event.
+The plugin stores its date claim and notification status in `.amp/state/daily-focus.sqlite` in the controller orb workspace. A unique timezone/date key prevents duplicate workflows or webhook redelivery from creating another daily thread. The thread ID and URL are persisted before Telegram is called; if Telegram fails, webhook retry reuses that thread. This state directory is intentionally ignored by Git.
+
+The current stable Plugin API cannot set a spawned thread's title or labels. Its `daily focus` mode label and the dated Telegram message identify the thread without sending an artificial first prompt that would start the agent before the user asks a question.
 
 ## Local checks
 

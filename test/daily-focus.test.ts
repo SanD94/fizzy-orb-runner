@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { authorized, localDate, nextLink, readFizzy, type FizzyConfig } from '../.amp/plugins/daily-focus'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { DailyRunStore, authorized, decodeTrigger, localDate, nextLink, readFizzy, type FizzyConfig } from '../.amp/plugins/daily-focus'
 
 describe('daily focus helpers', () => {
 	test('uses the configured timezone for the run date', () => {
@@ -10,6 +13,40 @@ describe('daily focus helpers', () => {
 		expect(authorized('Bearer correct horse', 'correct horse')).toBe(true)
 		expect(authorized('Bearer wrong', 'correct horse')).toBe(false)
 		expect(authorized(undefined, 'correct horse')).toBe(false)
+	})
+
+	test('accepts a fresh trigger timestamp and rejects stale requests', () => {
+		const body = (triggeredAt: string) => new TextEncoder().encode(JSON.stringify({ triggered_at: triggeredAt }))
+		expect(decodeTrigger({
+			body: body('2026-08-29T09:00:00Z'),
+			receivedAt: '2026-08-29T09:05:00Z',
+		}).triggeredAt.toISOString()).toBe('2026-08-29T09:00:00.000Z')
+		expect(() => decodeTrigger({
+			body: body('2026-08-29T08:49:59Z'),
+			receivedAt: '2026-08-29T09:00:00Z',
+		})).toThrow('stale_trigger')
+	})
+
+	test('atomically claims one run per timezone and local date', () => {
+		const directory = mkdtempSync(join(tmpdir(), 'daily-focus-'))
+		const store = new DailyRunStore(join(directory, 'state.sqlite'))
+		try {
+			const first = store.claim('2026-08-29', 'Europe/Istanbul', 'event-1')
+			const duplicate = store.claim('2026-08-29', 'Europe/Istanbul', 'event-2')
+			expect(first.claimed).toBe(true)
+			expect(duplicate.claimed).toBe(false)
+			expect(duplicate.run.eventId).toBe('event-1')
+
+			const created = store.markThreadCreated(first.run.runKey, 'T-thread', 'https://ampcode.com/threads/T-thread')
+			expect(created.status).toBe('thread_created')
+			expect(created.threadId).toBe('T-thread')
+			const notified = store.markNotified(first.run.runKey, 42)
+			expect(notified.status).toBe('notified')
+			expect(notified.telegramMessageId).toBe(42)
+		} finally {
+			store.close()
+			rmSync(directory, { recursive: true, force: true })
+		}
 	})
 
 	test('extracts Fizzy rel=next pagination links', () => {
