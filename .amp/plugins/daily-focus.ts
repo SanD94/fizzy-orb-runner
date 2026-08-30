@@ -73,7 +73,7 @@ export function readConfig(): Config {
 		throw new Error('invalid_amp_thread_visibility')
 	}
 
-	const timezone = process.env.DAILY_TIMEZONE ?? 'UTC'
+	const timezone = process.env.DAILY_TIMEZONE ?? 'Europe/Berlin'
 	new Intl.DateTimeFormat('en', { timeZone: timezone }).format()
 
 	const fizzyBaseUrl = new URL(process.env.FIZZY_BASE_URL ?? 'https://app.fizzy.do')

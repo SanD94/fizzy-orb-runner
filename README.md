@@ -6,8 +6,8 @@ The connector creates one fresh Amp thread each morning through a scheduled GitH
 
 | Decision | Phase 1 choice |
 | --- | --- |
-| Scheduler | GitHub Actions at `0 9 * * *` (UTC), plus manual `workflow_dispatch` recovery |
-| Daily timezone/time | `UTC` at 09:00 by default; timezone remains configurable with `DAILY_TIMEZONE` |
+| Scheduler | GitHub Actions at `0 7 * * *` in `Europe/Berlin`, plus manual `workflow_dispatch` recovery |
+| Daily timezone/time | `Europe/Berlin` at 07:00, including the CET/CEST change |
 | Thread | `medium` mode, private visibility, orb executor |
 | Fizzy access | Dynamic reads through `fizzy_read`; explicit card and comment creation through dedicated tools |
 | Telegram | Outbound `sendMessage` only; no inbound endpoint |
@@ -19,7 +19,7 @@ The connector creates one fresh Amp thread each morning through a scheduled GitH
 
    | Name | Kind | Example |
    | --- | --- | --- |
-   | `DAILY_TIMEZONE` | variable | `UTC` |
+   | `DAILY_TIMEZONE` | variable | `Europe/Berlin` |
    | `AMP_THREAD_MODE` | variable | `medium` |
    | `AMP_THREAD_VISIBILITY` | variable | `private` |
    | `FIZZY_BASE_URL` | variable | `https://app.fizzy.do` |
@@ -38,7 +38,7 @@ In the repository's **Actions secrets**, add:
 - `AMP_WEBHOOK_URL`: the private URL copied from the Amp command;
 - `DAILY_TRIGGER_SECRET`: the same random value configured in the Amp project.
 
-Run **Daily focus** from the Actions tab for the initial test. Thereafter it runs at 09:00 UTC. A successful workflow exits immediately after Amp accepts the event. Confirm:
+Run **Daily focus** from the Actions tab for the initial test. Thereafter GitHub's timezone-aware schedule runs it at 07:00 in `Europe/Berlin`, automatically following the CET/CEST change. A successful delivery exits immediately after Amp accepts the event. Confirm:
 
 1. the sleeping controller orb wakes;
 2. a fresh private orb thread appears with `fizzy_read`, `fizzy_create_card`, and `fizzy_create_comment` tools;
