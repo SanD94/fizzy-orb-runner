@@ -8,9 +8,16 @@ The connector creates one fresh Amp thread each morning through a scheduled GitH
 | --- | --- |
 | Scheduler | GitHub Actions at `0 7 * * *` in `Europe/Berlin`, plus manual `workflow_dispatch` recovery |
 | Daily timezone/time | `Europe/Berlin` at 07:00, including the CET/CEST change |
-| Thread | `medium` mode, private visibility, orb executor |
+| Thread | `daily-focus` custom mode extending `medium`, private visibility, orb executor |
+| Agent models | GPT-6.1 Sol (high) main agent, GPT-6 Astra (xhigh) Oracle, GPT-6.1 Sol (medium) subagents |
 | Fizzy access | Dynamic reads through `fizzy_read`; explicit card and comment creation through dedicated tools |
 | Telegram | Outbound `sendMessage` only; no inbound endpoint |
+
+The plugin explicitly selects OpenAI models for all three agent roles. Amp's custom modes do **not** inherit personal Tune Modes pins, including the **ChatGPT Only** preset, even when they extend `medium`. `AMP_THREAD_MODE` selects the inherited prompt and tools, not the model. The plugin also disables inherited features so an API-only `pro` feature cannot carry over from the controller.
+
+Link an active ChatGPT connection in [Amp Model Routing](https://ampcode.com/settings/model-routing) to serve these models through your subscription. Selecting OpenAI models does not itself guarantee subscription billing: without a matching active connection, Amp serves them using credits. Orb compute and supporting services such as Painter and web search are not covered by the subscription. See [The Dial](https://ampcode.com/docs/the-dial) and [Model Routing](https://ampcode.com/docs/customize/model-routing).
+
+After publishing a plugin change, reload the plugin in the existing controller orb to update future daily threads. New orbs load the published version automatically. Existing daily threads keep their original agent definition; the change does not switch their model.
 
 ## Amp project setup
 

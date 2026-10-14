@@ -12,7 +12,7 @@
     },
   },
   "packages": {
-    "@ampcode/plugin": ["@ampcode/plugin@0.0.0-20260829001628-ga341349", "", {}, "sha512-POjROW9S8s1dG9tgKZjzvi5FdVs0blUzOiRS5KLlhjntWlEei4ZmrO6TACZQHZbnVRP0DWw9hjIg4wqoDQ+wPA=="],
+    "@ampcode/plugin": ["@ampcode/plugin@0.0.0-20261014001617-g57951ed", "", {}, "sha512-N6vuyrxT3oZeyX6I3UhCTCrUYYXbILMmttzU62ZJpgvXu5GKsv0gbEJQMKa9RbChceR/24IUfpCIKYwQuEcoFw=="],
 
     "@types/bun": ["@types/bun@1.4.0", "", { "dependencies": { "bun-types": "1.4.0" } }, "sha512-K+lZULY23vRgK/CfTjFIV+tyifaNdSMlPh9j+6mQ/cLfpOznLyAuzgV/JQysyECpkBQLVMSyvjlr2fBUSA9wFQ=="],
 
