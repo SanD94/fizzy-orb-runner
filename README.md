@@ -9,7 +9,7 @@ The connector creates one fresh Amp thread each morning through a scheduled GitH
 | Scheduler | GitHub Actions at `0 7 * * *` in `Europe/Berlin`, plus manual `workflow_dispatch` recovery |
 | Daily timezone/time | `Europe/Berlin` at 07:00, including the CET/CEST change |
 | Thread | `daily-focus` custom mode extending `medium`, private visibility, orb executor |
-| Agent models | GPT-6.1 Sol (high) main agent, GPT-6 Astra (xhigh) Oracle, GPT-6.1 Sol (medium) subagents |
+| Agent models | GPT-6.1 Sol (medium) main agent, GPT-6 Astra (medium) Oracle, GPT-6.1 Sol (medium) subagents |
 | Fizzy access | Dynamic reads through `fizzy_read`; explicit card and comment creation through dedicated tools |
 | Telegram | Outbound `sendMessage` only; no inbound endpoint |
 
